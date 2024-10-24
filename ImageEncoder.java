@@ -27,28 +27,35 @@ public class ImageEncoder extends RecursiveTask<List<String[][]>> {
 
     @Override
     protected List<String[][]> compute() {
+        // Check if we are down to processing a single pixel
         if ((endX - startX == 1) && (endY - startY == 1)) {
-            // Process a single pixel (now represented by 3 boards)
             return encodePixelAsBoards(startX, startY);
         } else {
-            // Split the task into smaller subtasks
-            int midX = (startX + endX) / 2;
-            int midY = (startY + endY) / 2;
+            // Only split if there is more than one pixel to process
+            if (endX > startX + 1 || endY > startY + 1) {
+                // Split the task into smaller subtasks
+                int midX = (startX + endX) / 2;
+                int midY = (startY + endY) / 2;
 
-            ImageEncoder topLeft = new ImageEncoder(image, startX, startY, midX, midY);
-            ImageEncoder topRight = new ImageEncoder(image, midX, startY, endX, midY);
-            ImageEncoder bottomLeft = new ImageEncoder(image, startX, midY, midX, endY);
-            ImageEncoder bottomRight = new ImageEncoder(image, midX, midY, endX, endY);
+                ImageEncoder topLeft = new ImageEncoder(image, startX, startY, midX, midY);
+                ImageEncoder topRight = new ImageEncoder(image, midX, startY, endX, midY);
+                ImageEncoder bottomLeft = new ImageEncoder(image, startX, midY, midX, endY);
+                ImageEncoder bottomRight = new ImageEncoder(image, midX, midY, endX, endY);
 
-            invokeAll(topLeft, topRight, bottomLeft, bottomRight);
+                // Invoke subtasks in parallel
+                invokeAll(topLeft, topRight, bottomLeft, bottomRight);
 
-            List<String[][]> result = new ArrayList<>();
-            result.addAll(topLeft.join());
-            result.addAll(topRight.join());
-            result.addAll(bottomLeft.join());
-            result.addAll(bottomRight.join());
+                List<String[][]> result = new ArrayList<>();
+                result.addAll(topLeft.join());
+                result.addAll(topRight.join());
+                result.addAll(bottomLeft.join());
+                result.addAll(bottomRight.join());
 
-            return result;
+                return result;
+            } else {
+                // If we're here, process the single pixel without splitting further
+                return encodePixelAsBoards(startX, startY);
+            }
         }
     }
 
@@ -111,15 +118,15 @@ public class ImageEncoder extends RecursiveTask<List<String[][]>> {
             for (int i = 0; i < encodedBoards.size(); i += 3) {
                 // Write Red board
                 writeBoard(bw, encodedBoards.get(i));
-                bw.write("R;");
 
+                // Separate board with a delimiter
+                bw.write("#");
                 // Write Green board
                 writeBoard(bw, encodedBoards.get(i + 1));
-                bw.write("G;");
-
-                // Write Blue board
+                bw.write("#");
                 writeBoard(bw, encodedBoards.get(i + 2));
-                bw.write("B;");
+
+                // End of pixel boards, move to next pixel
                 bw.newLine();
             }
         } catch (Exception e) {
