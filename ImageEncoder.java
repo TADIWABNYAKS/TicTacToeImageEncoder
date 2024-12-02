@@ -2,147 +2,93 @@ import java.awt.image.BufferedImage;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
-import java.util.ArrayList;
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveTask;
+
 import javax.imageio.ImageIO;
 
-public class ImageEncoder extends RecursiveTask<List<String[][]>> {
+import java.awt.image.BufferedImage;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.RecursiveTask;
 
-    private static final int BOARD_SIZE = 3;  // Each board is 3x3
-    private BufferedImage image;
-    private int startX;
-    private int startY;
-    private int endX;
-    private int endY;
+public class ImageEncoder {
 
-    public ImageEncoder(BufferedImage image, int startX, int startY, int endX, int endY) {
-        this.image = image;
-        this.startX = startX;
-        this.startY = startY;
-        this.endX = endX;
-        this.endY = endY;
-    }
+    private static final int SEQUENTIAL_THRESHOLD = 12; // 
 
-    @Override
-    protected List<String[][]> compute() {
-        // Check if we are down to processing a single pixel
-        if ((endX - startX == 1) && (endY - startY == 1)) {
-            return encodePixelAsBoards(startX, startY);
-        } else {
-            // Only split if there is more than one pixel to process
-            if (endX > startX + 1 || endY > startY + 1) {
-                // Split the task into smaller subtasks
-                int midX = (startX + endX) / 2;
-                int midY = (startY + endY) / 2;
-
-                ImageEncoder topLeft = new ImageEncoder(image, startX, startY, midX, midY);
-                ImageEncoder topRight = new ImageEncoder(image, midX, startY, endX, midY);
-                ImageEncoder bottomLeft = new ImageEncoder(image, startX, midY, midX, endY);
-                ImageEncoder bottomRight = new ImageEncoder(image, midX, midY, endX, endY);
-
-                // Invoke subtasks in parallel
-                invokeAll(topLeft, topRight, bottomLeft, bottomRight);
-
-                List<String[][]> result = new ArrayList<>();
-                result.addAll(topLeft.join());
-                result.addAll(topRight.join());
-                result.addAll(bottomLeft.join());
-                result.addAll(bottomRight.join());
-
-                return result;
-            } else {
-                // If we're here, process the single pixel without splitting further
-                return encodePixelAsBoards(startX, startY);
-            }
-        }
-    }
-
-    private List<String[][]> encodePixelAsBoards(int x, int y) {
-        List<String[][]> boards = new ArrayList<>();
-
-        int rgb = image.getRGB(x, y);
-        int red = (rgb >> 16) & 0xFF;
-        int green = (rgb >> 8) & 0xFF;
-        int blue = rgb & 0xFF;
-
-        // Create three boards: one for Red, Green, and Blue
-        String[][] redBoard = encodeValueAsBoard(red);
-        String[][] greenBoard = encodeValueAsBoard(green);
-        String[][] blueBoard = encodeValueAsBoard(blue);
-
-        boards.add(redBoard);
-        boards.add(greenBoard);
-        boards.add(blueBoard);
-
-        return boards;
-    }
-
-    private String[][] encodeValueAsBoard(int value) {
-        String[][] board = new String[BOARD_SIZE][BOARD_SIZE];
-        String binaryString = String.format("%9s", Integer.toBinaryString(value)).replace(' ', '0');  // Ensure 9-bit binary
-
-        // Map the binary string to a 3x3 board, ignoring the most significant bit (assumed to be 0/O)
-        int index = 0;
-        for (int i = 0; i < BOARD_SIZE; i++) {
-            for (int j = 0; j < BOARD_SIZE; j++) {
-                if (index == 0) {
-                    board[i][j] = "O";  // Default most significant bit as 0/O
-                } else {
-                    board[i][j] = binaryString.charAt(index - 1) == '1' ? "X" : "O";
-                }
-                index++;
-            }
-        }
-        return board;
-    }
-
-    // Encodes the image in parallel
-    public static List<String[][]> parallelEncode(BufferedImage image) {
-        ForkJoinPool pool = new ForkJoinPool();
-        ImageEncoder task = new ImageEncoder(image, 0, 0, image.getWidth(), image.getHeight());
-        return pool.invoke(task); 
-    }
-
-    // Main method inside the class to handle encoding
-    public static void main(String[] args) throws Exception {
-
-        BufferedImage image = ImageIO.read(new File("C://Users//tadiw//Desktop//TicTacToe//test1.png"));
-
-        // Encode the image into Tic-Tac-Toe boards (3 boards per pixel)
-        List<String[][]> encodedBoards = ImageEncoder.parallelEncode(image);
-
-        // Save boards into a file
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter("C://Users//tadiw//Desktop//New folder//test.tac"))) {
-            for (int i = 0; i < encodedBoards.size(); i += 3) {
-                // Write Red board
-                writeBoard(bw, encodedBoards.get(i));
-
-                // Separate board with a delimiter
-                bw.write("#");
-                // Write Green board
-                writeBoard(bw, encodedBoards.get(i + 1));
-                bw.write("#");
-                writeBoard(bw, encodedBoards.get(i + 2));
-
-                // End of pixel boards, move to next pixel
-                bw.newLine();
-            }
+    public static void main(String[] args) {
+        try {
+            BufferedImage image =  ImageIO.read(new File("test1.png")); 
+            String outputFileName = "outputt1.tac"; //Replace with args[0] for CLI 
+            ForkJoinPool forkJoinPool = new ForkJoinPool();
+            EncoderTask encoderTask = new EncoderTask(image, 0, 0, image.getWidth(), image.getHeight());
+            List<String> encodedLines = forkJoinPool.invoke(encoderTask);
+            writeToFile(outputFileName, encodedLines);
         } catch (Exception e) {
-            System.out.println(e);
+            e.printStackTrace();
         }
-
-        System.out.println("Image successfully Tic Tac Toed (Encoded)");
     }
 
-    // Helper method to write a board to the file
-    private static void writeBoard(BufferedWriter bw, String[][] board) throws Exception {
-        for (int i = 0; i < BOARD_SIZE; i++) {
-            bw.write(String.join(",", board[i]));
-            if (i < BOARD_SIZE - 1) {
-                bw.write(";");
+    static class EncoderTask extends RecursiveTask<List<String>> {
+        private final BufferedImage image;
+        private final int xStart, yStart, width, height;
+
+        public EncoderTask(BufferedImage image, int xStart, int yStart, int width, int height) {
+            this.image = image;
+            this.xStart = xStart;
+            this.yStart = yStart;
+            this.width = width;
+            this.height = height;
+        }
+ 
+        @Override
+        protected List<String> compute() {
+            if (width * height <= SEQUENTIAL_THRESHOLD) {
+                return processSequentially();
+            } else {
+                int halfWidth = width / 2;
+                int halfHeight = height / 2;
+    
+                //Divide the image into quadrants 
+                EncoderTask task1 = new EncoderTask(image, xStart, yStart, halfWidth, halfHeight);
+                EncoderTask task2 = new EncoderTask(image, xStart + halfWidth, yStart, width - halfWidth, halfHeight);
+                EncoderTask task3 = new EncoderTask(image, xStart, yStart + halfHeight, halfWidth, height - halfHeight);
+                EncoderTask task4 = new EncoderTask(image, xStart + halfWidth, yStart + halfHeight, width - halfWidth, height - halfHeight);
+
+                task1.fork();
+                task2.fork();
+                task3.fork();
+
+
+                List<String> part4 = task4.compute();
+                List<String> part1 = task1.join();
+                List<String> part2 = task2.join();
+                List<String> part3 = task3.join();
+            
+                //Merge boards from these tasks in order
+                part1.addAll(part2);
+                part1.addAll(part3);
+                part1.addAll(part4);
+                return part1;
+            }
+        }
+
+        private List<String> processSequentially() {
+            // Implement sequential processing and collect lines in a list
+            return null; 
+        }
+    }
+
+    private static void writeToFile(String outputFileName, List<String> encodedLines) throws IOException {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFileName))) {
+            for (String line : encodedLines) {
+                writer.write(line);
+                writer.newLine();
             }
         }
     }
-}
+} 
