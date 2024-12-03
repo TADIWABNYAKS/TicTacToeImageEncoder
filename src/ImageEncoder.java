@@ -145,7 +145,7 @@ public class ImageEncoder {
 
     public static void main(String[] args) {
         if (args.length != 3) {
-            System.out.println("Usage: java YourProgram <inputFile> <outputFile> <mode>");
+            System.out.println("Usage: java ImageEncoder <inputFile> <outputFile> <mode>");
             System.out.println("Modes: E (encode), D (decode)");
             System.exit(1);
         }
