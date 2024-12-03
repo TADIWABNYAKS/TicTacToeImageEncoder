@@ -3,92 +3,123 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.List;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.RecursiveTask;
-
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import javax.imageio.ImageIO;
-
-import java.awt.image.BufferedImage;
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.List;
-import java.util.concurrent.RecursiveTask;
 
 public class ImageEncoder {
 
-    private static final int SEQUENTIAL_THRESHOLD = 12; // 
+    public static void encodeImageToTicTacToe(String pngFilePath, String tacFilePath) throws IOException {
+        // Read the PNG image
+        BufferedImage image = ImageIO.read(new File(pngFilePath));
+        int width = image.getWidth();
+        int height = image.getHeight();
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(tacFilePath))) {
+            // Write width and height
+            writer.write(width + " " + height);
+            writer.newLine();
+
+            // Iterate over each pixel
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    int rgb = image.getRGB(x, y);
+                    // Extract R, G, B components
+                    //Bits 24-31: Alpha (transparency)
+                    //Bits 16-23: Red
+                    //Bits 8-15: Green
+                    //Bits 0-7: Blue
+                    int red = (rgb >> 16) & 0xFF;
+                    int green = (rgb >> 8) & 0xFF;
+                    int blue = rgb & 0xFF;
+
+                    // Convert each component to board strings
+                    String boardR = byteToBoardString((byte) red);
+                    String boardG = byteToBoardString((byte) green);
+                    String boardB = byteToBoardString((byte) blue);
+
+                    // Write the board strings to the file
+                    writer.write(boardR);
+                    writer.newLine();
+                    writer.write(boardG);
+                    writer.newLine();
+                    writer.write(boardB);
+                    writer.newLine();
+                }
+            }
+        }
+    }
+
+    public static void decodeTicTacToeToImage(String tacFilePath, String outputPngFilePath) throws IOException {
+        java.util.List<String> lines = Files.readAllLines(Paths.get(tacFilePath));
+        // First line contains width and height
+        String[] wh = lines.remove(0).split(" ");
+        int width = Integer.parseInt(wh[0]);
+        int height = Integer.parseInt(wh[1]);
+
+        // Create a new image to store the decoded data
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+
+        // Iterate over each pixel
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                // Read R, G, B boards for the current pixel
+                String boardR = lines.remove(0);
+                String boardG = lines.remove(0);
+                String boardB = lines.remove(0);
+
+                // Convert board strings back to bytes
+                byte red = boardStringToByte(boardR);
+                byte green = boardStringToByte(boardG);
+                byte blue = boardStringToByte(boardB);
+
+                // Set the pixel in the image
+                int rgb = (red << 16) | (green << 8) | blue;
+                image.setRGB(x, y, rgb);
+            }
+        }
+
+        // Write the image to the output file
+        ImageIO.write(image, "png", new File(outputPngFilePath));
+    }
+
+    private static String byteToBoardString(byte b) {
+        char[] board = new char[9];
+        // Position 1 is always 'O'
+        board[0] = 'O';
+        // Positions 2-9 correspond to bits 7-0
+        for (int i = 1; i <= 8; i++) {
+            int bitIndex = 7 - (i - 1); // positions 2-9 correspond to bits 7-0
+            boolean bitValue = ((b >> bitIndex) & 1) == 1;
+            board[i] = bitValue ? 'X' : 'O';
+        }
+        return new String(board);
+    }
+
+    private static byte boardStringToByte(String board) {
+        if (board.length() != 9) {
+            throw new IllegalArgumentException("Board must have exactly 9 characters");
+        }
+        // Position 1 is ignored as it's always 'O'
+        byte value = 0;
+        for (int i = 1; i < 9; i++) {
+            char c = board.charAt(i);
+            if (c != 'X' && c != 'O') {
+                throw new IllegalArgumentException("Invalid character in board string");
+            }
+            int bitValue = c == 'X' ? 1 : 0;
+            int bitIndex = 7 - (i - 1); // positions 2-9 correspond to bits 7-0
+            value |= (bitValue << bitIndex);
+        }
+        return value;
+    }
 
     public static void main(String[] args) {
         try {
-            BufferedImage image =  ImageIO.read(new File("test1.png")); 
-            String outputFileName = "outputt1.tac"; //Replace with args[0] for CLI 
-            ForkJoinPool forkJoinPool = new ForkJoinPool();
-            EncoderTask encoderTask = new EncoderTask(image, 0, 0, image.getWidth(), image.getHeight());
-            List<String> encodedLines = forkJoinPool.invoke(encoderTask);
-            writeToFile(outputFileName, encodedLines);
-        } catch (Exception e) {
+         //   encodeImageToTicTacToe("C:\\Users\\tadiw\\Desktop\\TicTacToe\\test1.png","C:\\Users\\tadiw\\Desktop\\TicTacToe\\test.tac");
+            decodeTicTacToeToImage("C:\\Users\\tadiw\\Desktop\\TicTacToe\\test.tac", "C:\\Users\\tadiw\\Desktop\\TicTacToe\\decodedjoe.png");
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
-
-    static class EncoderTask extends RecursiveTask<List<String>> {
-        private final BufferedImage image;
-        private final int xStart, yStart, width, height;
-
-        public EncoderTask(BufferedImage image, int xStart, int yStart, int width, int height) {
-            this.image = image;
-            this.xStart = xStart;
-            this.yStart = yStart;
-            this.width = width;
-            this.height = height;
-        }
- 
-        @Override
-        protected List<String> compute() {
-            if (width * height <= SEQUENTIAL_THRESHOLD) {
-                return processSequentially();
-            } else {
-                int halfWidth = width / 2;
-                int halfHeight = height / 2;
-    
-                //Divide the image into quadrants 
-                EncoderTask task1 = new EncoderTask(image, xStart, yStart, halfWidth, halfHeight);
-                EncoderTask task2 = new EncoderTask(image, xStart + halfWidth, yStart, width - halfWidth, halfHeight);
-                EncoderTask task3 = new EncoderTask(image, xStart, yStart + halfHeight, halfWidth, height - halfHeight);
-                EncoderTask task4 = new EncoderTask(image, xStart + halfWidth, yStart + halfHeight, width - halfWidth, height - halfHeight);
-
-                task1.fork();
-                task2.fork();
-                task3.fork();
-
-
-                List<String> part4 = task4.compute();
-                List<String> part1 = task1.join();
-                List<String> part2 = task2.join();
-                List<String> part3 = task3.join();
-            
-                //Merge boards from these tasks in order
-                part1.addAll(part2);
-                part1.addAll(part3);
-                part1.addAll(part4);
-                return part1;
-            }
-        }
-
-        private List<String> processSequentially() {
-            // Implement sequential processing and collect lines in a list
-            return null; 
-        }
-    }
-
-    private static void writeToFile(String outputFileName, List<String> encodedLines) throws IOException {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFileName))) {
-            for (String line : encodedLines) {
-                writer.write(line);
-                writer.newLine();
-            }
-        }
-    }
-} 
+}
