@@ -17,6 +17,6 @@ The program accepts three command-line arguments:
 ## Command Syntax
 
 ```sh
-java ImageToTicTacToeEncoder <inputFile> <outputFile> <mode>
+java ImageEncoder <inputFile> <outputFile> <mode>
 ```
 
