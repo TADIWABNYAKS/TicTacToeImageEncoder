@@ -14,7 +14,7 @@ import javax.imageio.ImageIO;
 public class ImageEncoder {
 
     /**
-     * Encodes an image from a PNG file into a .tac file using Tic-Tac-Toe boards.
+     * Encodes an image from a PNG file into a .tac file using Tic-Tac-Toe boards where each  pixel is represented as 3 Tic-Tac-Toe boards, Each board representing a RGB channel. Where each board has the 9th bit ignored.
      *
      * @param inputPath  path to input PNG file
      * @param outputPath path to output .tac file
