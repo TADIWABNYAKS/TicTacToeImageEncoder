@@ -6,13 +6,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import javax.imageio.ImageIO;
-
 /**
  * This class provides methods to encode images into Tic-Tac-Toe boards and decode them back.
  * @author TBN 
  */
 public class ImageEncoder {
-
     /**
      * Encodes an image from a PNG file into a .tac file using Tic-Tac-Toe boards where each  pixel is represented as 3 Tic-Tac-Toe boards, Each board representing a RGB channel. Where each board has the 9th bit ignored.
      *
@@ -117,8 +115,8 @@ public class ImageEncoder {
             board[i] = bitValue ? 'X' : 'O';
         }
         return new String(board);
+    
     }
-
     /**
      * Converts a Tic-Tac-Toe board string back into a byte value.
      *
