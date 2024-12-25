@@ -83,7 +83,7 @@ public class ImageEncoder {
                 String boardR = lines.remove(0);
                 String boardG = lines.remove(0);
                 String boardB = lines.remove(0);
-
+                
                 byte red = boardStringToByte(boardR);
                 byte green = boardStringToByte(boardG);
                 byte blue = boardStringToByte(boardB);
