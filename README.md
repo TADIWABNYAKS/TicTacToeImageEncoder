@@ -45,12 +45,11 @@ The decoder also reads the original `<width> <height>` format with three RGB boa
 
 | Original image | → X/O boards (`.tac`) → | Decoded image |
 | :---: | :---: | :---: |
-| <img src="examples/original.png" alt="Original image" width="260"> | <code>TAC2 857 1200 RGBA<br>XOOXXOOXO<br>XOOXOOOOO<br>OOOOXOOXO<br>OXXXXXXXX<br>…</code> | <img src="examples/original.png" alt="Decoded image, identical to the original" width="260"> |
-| [original.png](examples/original.png) | `image.tac` | `decoded.png` |
+| <img src="examples/original.png" alt="Original image" width="260"> | <code>TAC2 857 1200 RGBA<br>XOOXXOOXO<br>XOOXOOOOO<br>OOOOXOOXO<br>OXXXXXXXX<br>…</code> | <img src="examples/decoded.png" alt="Decoded image" width="260"> |
+| [original.png](examples/original.png) | [image.tac](examples/image.tac) | [decoded.png](examples/decoded.png) |
 
 To reproduce the conversion:
 
 ```sh
-java ImageEncoder examples/original.png image.tac E
-java ImageEncoder image.tac decoded.png D
+java ImageEncoder <inputFile> <outputFile> <mode>
 ```
